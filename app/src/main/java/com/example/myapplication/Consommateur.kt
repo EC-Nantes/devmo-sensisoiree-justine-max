@@ -55,7 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
-import com.example.myapplication.ui.theme.MyA   pplicationTheme
+import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class Consommateur : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +63,6 @@ class Consommateur : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {var isSamView by rememberSaveable { mutableStateOf(false) }
-
             MyApplicationTheme {
                 AppScreen(
                     isSamView = isSamView,
