@@ -55,6 +55,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class Consommateur : ComponentActivity() {
@@ -62,12 +71,57 @@ class Consommateur : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        setContent {var isSamView by rememberSaveable { mutableStateOf(false) }
-            MyApplicationTheme {
-                AppScreen(
-                    isSamView = isSamView,
-                    onSwitchChange = { isSamView = it }
+        setContent {
+            var isSamView by rememberSaveable { mutableStateOf(false) }
+
+            val friends = remember {
+                mutableStateListOf(
+                    FriendInfo(1, "HUGO OGUH", 2, true),
+                    FriendInfo(2, "LISA MONA", 1, false),
+                    FriendInfo(3, "JEAN NAEJ", 3, false),
+                    FriendInfo(4, "PAUL TEST", 0, true)
                 )
+            }
+
+            val navController = rememberNavController()
+
+            MyApplicationTheme {
+                NavHost(
+                    navController = navController,
+                    startDestination = "home"
+                ) {
+                    composable("home") {
+                        AppScreen(
+                            isSamView = isSamView,
+                            onSwitchChange = { isSamView = it },
+                            friends = friends,
+                            onFriendClick = { friend ->
+                                navController.navigate("detail/${friend.id}")
+                            }
+                        )
+                    }
+
+                    composable("detail/{friendId}") { backStackEntry ->
+                        val friendId = backStackEntry.arguments
+                            ?.getString("friendId")
+                            ?.toIntOrNull() ?: -1
+
+                        val friend = friends.find { it.id == friendId }
+
+                        if (friend != null) {
+                            ConsumptionScreen(
+                                friend = friend,
+                                onBackClick = { navController.popBackStack() },
+                                onDeclareClick = {
+                                    friend.consumptionCount += 1
+                                },
+                                onToggleSamClick = {
+                                    friend.isSafe = !friend.isSafe
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -76,8 +130,12 @@ class Consommateur : ComponentActivity() {
 
 /*
    DONNÉES
+   On définis ici des données tels que friends. On pourrait aller les chercher en BD
+
     */
 
+val ButtonOrange = Color(0xFFF08060)
+val StatusGreen = Color(0xFF82C17D)
 
 val GreenStatus = Color(0xFF10C95A)
 data class UserInfo(
@@ -88,53 +146,47 @@ data class UserInfo(
 data class FriendInfo(
     val id: Int,
     val name: String,
-    val consumptionCount: Int,
-    val isSafe: Boolean,
-    val gender: Gender = Gender.MALE
+    var consumptionCount: Int,
+    var isSafe: Boolean,
+    // On pourrait mettre le genre, mais on ne fera pas de calcul ici, donc on ne le met pas
 )
 
-enum class Gender {
-    MALE, FEMALE
-}
 /*
    ÉCRAN PRINCIPAL
     */
 @Composable
 fun AppScreen(
     isSamView: Boolean,
-    onSwitchChange: (Boolean) -> Unit
+    onSwitchChange: (Boolean) -> Unit,
+    friends: List<FriendInfo>,
+    onFriendClick: (FriendInfo) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-
-            if (isSamView) {
-                SamView(isSamView = isSamView,
-                    onSwitchChange = onSwitchChange)
-            } else {
-                PasSamView(isSamView = isSamView,
-                    onSwitchChange = onSwitchChange)
-            }
-        }
+    if (isSamView) {
+        SamView(
+            isSamView = isSamView,
+            onSwitchChange = onSwitchChange,
+            friends = friends,
+            onFriendClick = onFriendClick
+        )
+    } else {
+        PasSamView(
+            isSamView = isSamView,
+            onSwitchChange = onSwitchChange,
+            friends = friends,
+            onFriendClick = onFriendClick
+        )
     }
 }
 @Composable
 fun PasSamView(
     isSamView: Boolean,
-    onSwitchChange: (Boolean) -> Unit
+    onSwitchChange: (Boolean) -> Unit,
+    friends: List<FriendInfo>,
+    onFriendClick: (FriendInfo) -> Unit
 ) {
     val me = UserInfo(
         name = "MOI",
         consumptionCount = 2
-    )
-
-    val friends = listOf(
-        FriendInfo(1, "HUGO OGUH", 2, true, Gender.MALE),
-        FriendInfo(2, "LISA MONA", 1, false, Gender.FEMALE),
-        FriendInfo(3, "JEAN NAEJ", 3, false, Gender.MALE),
-        FriendInfo(4, "PAUL TEST", 0, true, Gender.MALE)
     )
 
     Scaffold(
@@ -167,10 +219,11 @@ fun PasSamView(
 
             item { SectionTitle("MES AMIS") }
 
-            items(friends) { friend ->
+            items(friends, key = { it.id }) { friend ->
                 FriendCard(
                     friend = friend,
-                    onReportClick = { }
+                    onReportClick = { },
+                    onFriendClick = { onFriendClick(friend) }
                 )
             }
         }
@@ -179,19 +232,15 @@ fun PasSamView(
 @Composable
 fun SamView(
     isSamView: Boolean,
-    onSwitchChange: (Boolean) -> Unit
+    onSwitchChange: (Boolean) -> Unit,
+    friends: List<FriendInfo>,
+    onFriendClick: (FriendInfo) -> Unit
 ) {
     val me = UserInfo(
         name = "MOI",
         consumptionCount = 2
     )
 
-    val friends = listOf(
-        FriendInfo(1, "HUGO OGUH", 2, true, Gender.MALE),
-        FriendInfo(2, "LISA MONA", 1, false, Gender.FEMALE),
-        FriendInfo(3, "JEAN NAEJ", 3, false, Gender.MALE),
-        FriendInfo(4, "PAUL TEST", 0, true, Gender.MALE)
-    )
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -226,7 +275,8 @@ fun SamView(
             items(friends) { friend ->
                 FriendCard(
                     friend = friend,
-                    onReportClick = { }
+                    onReportClick = { },
+                    onFriendClick = { onFriendClick(friend) }
                 )
             }
         }
@@ -364,7 +414,8 @@ fun MyCard(
 @Composable
 fun FriendCard(
     friend: FriendInfo,
-    onReportClick: () -> Unit
+    onReportClick: () -> Unit,
+    onFriendClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -377,17 +428,10 @@ fun FriendCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Column(
                 modifier = Modifier.width(110.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Divider(
-                    modifier = Modifier
-                        .height(1.dp)
-                        .width(0.dp)
-                )
-
                 Box(
                     modifier = Modifier
                         .height(140.dp)
@@ -397,14 +441,12 @@ fun FriendCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Icône personne",
                     tint = Color.Black,
                     modifier = Modifier.size(72.dp)
                 )
-
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -425,13 +467,14 @@ fun FriendCard(
                     text = friend.name,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.clickable { onFriendClick() }
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Nombre de consommations : ${friend.consumptionCount}",
+                    text = "Nombre de consommation.s : ${friend.consumptionCount}",
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp
                 )
@@ -531,7 +574,123 @@ fun SamModeSwitch(
     }
 }
 
-fun clickable(function: () -> Unit) {}
+@Composable
+fun ConsumptionScreen(
+    friend: FriendInfo,
+    onBackClick: () -> Unit,
+    onDeclareClick: () -> Unit,
+    onToggleSamClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "← Retour",
+            color = Color.White,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp, bottom = 16.dp)
+                .wrapContentWidth(Alignment.Start)
+                .clickable { onBackClick() }
+        )
+
+        Text(
+            text = friend.name,
+            style = TextStyle(
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            ),
+            modifier = Modifier.padding(top = 20.dp, bottom = 40.dp)
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Nombre de consommation.s : ${friend.consumptionCount}",
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Date et heure de la dernière consommation :\nXX/XX/XX à XXhXXmin",
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = if (friend.isSafe) "STATUT : SAM" else "STATUT : NON SAM",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .background(
+                                if (friend.isSafe) StatusGreen else Color.Gray,
+                                shape = CircleShape
+                            )
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CustomActionButton(
+                        text = "DÉCLARER",
+                        onClick = onDeclareClick
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    CustomActionButton(
+                        text = if (friend.isSafe) "PASSER NON SAM" else "PASSER SAM",
+                        onClick = onToggleSamClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun CustomActionButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = ButtonOrange),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.width(180.dp)
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 
 /*
    PREVIEW
@@ -539,13 +698,21 @@ fun clickable(function: () -> Unit) {}
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun AppScreenPreview() {
-
     var isSamView by remember { mutableStateOf(false) }
+
+    val friends = listOf(
+        FriendInfo(1, "HUGO OGUH", 2, true),
+        FriendInfo(2, "LISA MONA", 1, false),
+        FriendInfo(3, "JEAN NAEJ", 3, false),
+        FriendInfo(4, "PAUL TEST", 0, true)
+    )
 
     MyApplicationTheme {
         AppScreen(
             isSamView = isSamView,
-            onSwitchChange = { isSamView = it }
+            onSwitchChange = { isSamView = it },
+            friends = friends,
+            onFriendClick = { }
         )
     }
 }
