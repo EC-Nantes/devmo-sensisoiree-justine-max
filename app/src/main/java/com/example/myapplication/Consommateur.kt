@@ -73,7 +73,7 @@ class Consommateur : ComponentActivity() {
 
         setContent {
             var isSamView by rememberSaveable { mutableStateOf(false) }
-
+            // Ici on défini les amis, il faudra aller les chercher dans la BD
             val friends = remember {
                 mutableStateListOf(
                     FriendInfo(1, "HUGO OGUH", 2, true),
@@ -148,7 +148,7 @@ data class FriendInfo(
     val name: String,
     var consumptionCount: Int,
     var isSafe: Boolean,
-    // On pourrait mettre le genre, mais on ne fera pas de calcul ici, donc on ne le met pas
+    // On pourrait mettre le genre (Homme/Femme) pour faire des calculs futurs, mais on ne fera pas de calcul ici, donc on ne le met pas
 )
 
 /*
@@ -177,6 +177,9 @@ fun AppScreen(
         )
     }
 }
+/*
+   ÉCRAN NON SAM
+    */
 @Composable
 fun PasSamView(
     isSamView: Boolean,
@@ -229,6 +232,10 @@ fun PasSamView(
         }
     }
 }
+
+/*
+   ÉCRAN SAM
+    */
 @Composable
 fun SamView(
     isSamView: Boolean,
@@ -284,7 +291,7 @@ fun SamView(
 }
 
 /*
-   En tête
+   En tête (SAM OU PAS SAM)
     */
 @Composable
 fun TopHeader(
@@ -363,7 +370,7 @@ fun SectionTitle(title: String) {
 }
 
 /*
-    MOI
+    Rubrique MOI
  */
 
 @Composable
@@ -408,7 +415,7 @@ fun MyCard(
 }
 
 /*
-   AMI
+   Rubrique AMI
 */
 
 @Composable
@@ -530,8 +537,9 @@ fun ActionPillButton(
         )
     }
 }
+
 /*
-   Switch
+   SAM Switch
     */
 
 val SamGreen = Color(0xFF10C95A)
@@ -573,7 +581,9 @@ fun SamModeSwitch(
 
     }
 }
-
+/*
+   ÉCRAN Detaille consomation
+    */
 @Composable
 fun ConsumptionScreen(
     friend: FriendInfo,
@@ -656,6 +666,7 @@ fun ConsumptionScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CustomActionButton(
                         text = "DÉCLARER",
+                        //Ici, l'affichage ne s'actualise pas automatique, il faut quitter la page et revenir.
                         onClick = onDeclareClick
                     )
 
@@ -663,6 +674,7 @@ fun ConsumptionScreen(
 
                     CustomActionButton(
                         text = if (friend.isSafe) "PASSER NON SAM" else "PASSER SAM",
+                        //Ici, l'affichage ne s'actualise pas automatique, il faut quitter la page et revenir.
                         onClick = onToggleSamClick
                     )
                 }
